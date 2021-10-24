@@ -22,7 +22,7 @@ Install dependencies
   pip install -r requirements.txt
 ```
 
-Start the server
+Run script
 
 ```bash
   python3 main.py <day|week|month>
