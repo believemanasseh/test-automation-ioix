@@ -25,5 +25,5 @@ Install dependencies
 Start the server
 
 ```bash
-  python3 main.py <period | None>
+  python3 main.py <day|week|month>
 ```
