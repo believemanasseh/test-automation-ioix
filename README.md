@@ -2,6 +2,20 @@
 
 Test automation using Selenium WebDriver (Python binding).
 
+## Environment Variables
+
+To run this project, you will need to add the following environment variables to your .env file
+
+`SUBDOMAIN`
+
+`AUTH_USER`
+
+`AUTH_PASS`
+
+`LOGIN_EMAIL`
+
+`LOGIN_PASS`
+
 ## Run Locally
 
 Clone the project
