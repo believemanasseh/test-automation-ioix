@@ -445,21 +445,22 @@ def clean_test_results(data: dict) -> dict:
                 if k1 == "twitter":
                     for k2, v2 in data[key][k1].items():
                         if v2 == False:
-                            data["test_case_1"] = False
+                            cleaned_results[key] = False
                 if v1 == False:
-                    data["test_case_1"] = False
+                    cleaned_results[key] = False
 
-        if key == "test_case_2":
+        elif key == "test_case_2":
             for k1, v1 in data[key].items():
-                if k1 == "total_section":
-                    for k2, v2 in data[key][k1].items():
-                        if v2 == False:
-                            data["test_case_2"] = False
-                if k1 == "web_section":
-                    data[key][k1].pop("highest_echarts_value")  # skip check for key
-                    for k3, v4 in data[key][k1].items():
-                        if v4 == False:
-                            data["test_case_2"] = False
+                if not cleaned_results[key] == False:
+                    if k1 == "total_section":
+                        for k2, v2 in data[key][k1].items():
+                            if v2 == False:
+                                cleaned_results[key] = False
+                    if k1 == "web_section":
+                        data[key][k1].pop("highest_echarts_value")  # skip check for key
+                        for k3, v4 in data[key][k1].items():
+                            if v4 == False:
+                                cleaned_results[key] = False
 
     return dict(cleaned_results)
 
