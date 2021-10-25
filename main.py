@@ -436,6 +436,7 @@ def clean_test_results(data: dict) -> dict:
         "test_case_1": True,
         "test_case_2": True,
         "test_case_3": True,
+        "test_case_4": True,
     }
 
     for key in data.keys():
