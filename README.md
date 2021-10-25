@@ -41,3 +41,8 @@ Run script
 ```bash
   python3 main.py <day|week|month>
 ```
+  or
+
+```bash
+  bash init.sh <day|week|month>
+```
