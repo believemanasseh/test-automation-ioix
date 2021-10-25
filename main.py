@@ -16,7 +16,7 @@ import time
 import sys
 
 from collections import Counter
-from typing import Any
+from typing import Any, Tuple
 
 from helpers import convert_str_to_number
 from logger import logger as get_logger
@@ -162,7 +162,7 @@ def run_test_case_2(driver: Any) -> dict:
             returnCallback()
         }
 
-        var done = arguments[0]; // pass callback function to variable
+        var callback = arguments[0]; // get callback function
 
         function returnCallback() {
             // total section elements
@@ -180,7 +180,7 @@ def run_test_case_2(driver: Any) -> dict:
             result.search = parseInt(search.replace(/,/g,''))
             result.webInfo = parseInt(webInfo.replace(/,/g,''))
 
-            return done(result)
+            return callback(result)
         }
     """
     driver.set_script_timeout(3000)
@@ -205,7 +205,7 @@ def run_test_case_2(driver: Any) -> dict:
     return dict(test_result)
 
 
-def run_test_case_3(driver) -> dict:
+def run_test_case_3(driver: Any) -> Tuple[dict, list]:
     """Display list of topics and number duplicate domains."""
 
     duplicate_domains = {}
@@ -215,8 +215,8 @@ def run_test_case_3(driver) -> dict:
     script = """
         scrollTo(0, 500)
 
-        var domains = new Array()
-        var done = arguments[0];
+        var result = new Array()
+        var callback = arguments[0];
         var t = setInterval(findTopicSection, 3000)
 
         function findTopicSection() {
@@ -235,7 +235,7 @@ def run_test_case_3(driver) -> dict:
 
             for (i = 0; i < articles.length; i++) {
                 var domain = articles[i].querySelector('div > div > span > span:nth-last-child(1) > a')
-                domains.push(domain.textContent.trim())
+                result.push(domain.textContent.trim())
             }
 
             returnCallback()
@@ -246,37 +246,111 @@ def run_test_case_3(driver) -> dict:
         }
 
         function returnCallback() {
-            return done(domains)
+            return callback(result)
         }
     """
     driver.set_script_timeout(3000)
-    domains = driver.execute_async_script(script)
+    script_result = driver.execute_async_script(script)
 
     # count domains
-    domains_count = dict(Counter(domains))
+    domains_count = dict(Counter(script_result))
 
     # record duplicates
     for key in domains_count.keys():
         if domains_count[key] >= 2:
             duplicate_domains[key] = domains_count[key]
 
-    return dict(duplicate_domains)
+    # create list of domains
+    domains = []
+    for key in duplicate_domains.keys():
+        domains.append(key)
+
+    logger.info("Fetching duplicate domains and count...")
+    logger.info(duplicate_domains)
+    return dict(duplicate_domains), list(domains)
 
 
-def run_test_case_4(driver) -> dict:
+def run_test_case_4(driver: Any, domains: list = None) -> dict:
     """
     Goto articles page and scroll through the pages to collect the number
     of domains for a given word for a time period (e.g. monthly).
     """
 
-    web_section = driver.find_element(By.CSS_SELECTOR, "#collapse-cluster-web")
-    ActionChains(driver).move_to_element(web_section)
+    logger.info("Running test case 4...")
 
-    articles_hyperlink = web_section.find_element(
-        By.CSS_SELECTOR,
-        "div:nth-last-child(1) > div:nth-last-child(2) > div:nth-last-child(1) > a",
-    )
-    articles_hyperlink.click()
+    script = """
+        var callback = arguments[arguments.length - 1]
+        var domains = arguments[0] // list of domains to check against
+        var result = new Object()
+
+        console.log(domains)
+
+        function gotoArticlesPage() {
+            var webSection = document.querySelector('.p-content-word__web #collapse-cluster-web')
+            webSection.scrollIntoView({behavior: 'smooth'})
+            var articlesHyperlink = webSection.querySelector('div:nth-last-child(1) > div:nth-last-child(2) > div:nth-last-child(1) > a')
+            var href = articlesHyperlink.getAttribute('href')
+
+            location.href = href
+
+            setTimeout(scrollPages, 5000)
+        }
+
+        setTimeout(gotoArticlesPage, 7000)
+
+        function scrollPages() {
+            function gotoNext(item, index) {
+                var i
+                var totalPageCount = parseInt(nextBtn.previousSibling.querySelector('a').textContent)
+                sessionStorage.setItem(item, 0)
+
+                for (i = 2; i < totalPageCount; i++) {
+                    var nextBtn = document.querySelector('#compassApplication .next')
+                    nextBtn.scrollIntoView({behavior: 'smooth'})
+                    nextBtn.click()
+        
+                    setTimeout(countDomain.bind(null, item), 5000)
+                }
+            }
+
+            function countDomain(relativeDomain) {
+                var i
+                var articles = document.querySelector('#compassApplication article')
+                var domainCount = parseInt(sessionStorage.getItem(relativeDomain))
+
+                for (i = 0; i < articles.length; i++) {
+                    domain = articles[i].querySelector('div > div > span > span:nth-last-child(1) > a')
+                    
+                    if (domain.textContent.trim() === relativeDomain) {
+                        domainCount += 1
+                        result.relativeDomain = domainCount
+                    }
+                }
+                
+            }
+
+            domains.forEach(gotoNext)
+        }
+
+        setTimeout(function(){
+            // Create items array
+            var sorted_result = Object.keys(result).map(function(key) {
+                return [key, result[key]];
+            });
+
+            // Sort the array based on the second element
+            sorted_result.sort(function(first, second) {
+                return second[1] - first[1];
+            });
+
+            return callback(sorted_result)
+        }, 5000)
+    """
+    driver.set_script_timeout(3000)
+    script_result = driver.execute_async_script(script, domains)
+
+    logger.info(script_result)
+    return list(script_result)
 
 
 def main() -> dict:
@@ -333,10 +407,10 @@ def main() -> dict:
         test_result_2 = run_test_case_2(driver)
         logger.info("Test case 2 complete")
 
-        test_result_3 = run_test_case_3(driver)
+        test_result_3, domains = run_test_case_3(driver)
         logger.info("Test case 3 complete")
 
-        test_result_4 = run_test_case_4(driver)
+        test_result_4 = run_test_case_4(driver, domains=domains)
         logger.info("Test case 4 complete")
 
     return {
@@ -348,7 +422,8 @@ def main() -> dict:
 
 
 def clean_test_results(data: dict) -> dict:
-    """Clean test results.
+    """
+    Clean test results.
     -------
     :param data: Uncleaned test results data.
 
@@ -361,7 +436,6 @@ def clean_test_results(data: dict) -> dict:
         "test_case_1": True,
         "test_case_2": True,
         "test_case_3": True,
-        "test_case_4": True,
     }
 
     for key in data.keys():
